@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ห้องทดลอง 3D: อุณหภูมิและการวัดอุณหภูมิ ม.1</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#070b1a;--glass:rgba(255,255,255,.07);--glass2:rgba(14,20,48,.72);--line:rgba(255,255,255,.14);--tx:#e8eefc;--mut:#9fb0d3;--cold:#38d6ff;--warm:#ffb347;--hot:#ff5d5d;--acc:#7c8cff;--ok:#34d399;--bad:#fb7185}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:'Prompt',system-ui,-apple-system,'Segoe UI',sans-serif;color:var(--tx);background:radial-gradient(1200px 700px at 8% -10%,#1d2f78 0,transparent 60%),radial-gradient(900px 600px at 110% 110%,#4f1f73 0,transparent 55%),var(--bg);overflow:hidden;font-size:14px;line-height:1.55}
+button{font-family:inherit;cursor:pointer;color:inherit}
+.app{display:grid;grid-template-rows:auto 1fr;height:100vh;height:100dvh;gap:12px;padding:12px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:10px 18px;border-radius:20px;background:var(--glass);border:1px solid var(--line);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+.brand{display:flex;align-items:center;gap:12px}
+.logo{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;font-size:24px;background:linear-gradient(135deg,#5b6cff,#a05bff);box-shadow:0 8px 24px rgba(124,140,255,.45)}
+.brand h1{font-size:18px;font-weight:600;letter-spacing:-.2px}
+.brand p{font-size:12px;color:var(--mut)}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{padding:5px 12px;border-radius:999px;font-size:12px;font-weight:500;background:rgba(255,255,255,.08);border:1px solid var(--line);color:var(--mut)}
+.chip b{color:var(--tx);font-weight:600}
+main{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(350px,1fr);gap:12px;min-height:0}
+.stage{position:relative;border-radius:24px;overflow:hidden;border:1px solid var(--line);background:radial-gradient(900px 600px at 50% 20%,#16224f 0,#0a1028 70%);box-shadow:0 20px 60px rgba(0,0,0,.45)}
+#view{position:absolute;inset:0}
+#view canvas{display:block;width:100%;height:100%;outline:none;touch-action:none}
+#hsLayer{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.hs{position:absolute;left:0;top:0;width:34px;height:34px;border-radius:50%;border:2px solid #fff;background:rgba(124,140,255,.65);color:#fff;font-weight:700;font-size:14px;display:grid;place-items:center;pointer-events:auto;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);box-shadow:0 6px 18px rgba(0,0,0,.4);transition:background .25s,opacity .25s,scale .2s}
+.hs::after{content:"";position:absolute;inset:-2px;border-radius:50%;border:2px solid rgba(255,255,255,.8);animation:pulse 1.8s ease-out infinite}
+.hs:hover{scale:1.15}
+.hs.on{background:var(--warm);color:#2a1a00}
+.hs .tag{position:absolute;left:42px;top:50%;translate:0 -50%;white-space:nowrap;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:500;background:var(--glass2);border:1px solid var(--line);color:var(--tx);opacity:0;transform:translateX(-6px);transition:.25s;pointer-events:none}
+.hs:hover .tag,.hs.on .tag{opacity:1;transform:none}
+@keyframes pulse{0%{transform:scale(1);opacity:.9}100%{transform:scale(1.9);opacity:0}}
+.hud{position:absolute;top:14px;left:14px;display:flex;flex-direction:column;gap:8px;z-index:6}
+.pill{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border-radius:14px;background:var(--glass2);border:1px solid var(--line);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);font-size:13px;font-weight:500;width:fit-content;transition:border-color .4s,box-shadow .4s}
+.pill small{color:var(--mut);font-size:11px;font-weight:400}
+.tools{position:absolute;top:14px;right:14px;display:flex;gap:8px;z-index:6}
+.tbtn{padding:8px 12px;border-radius:12px;font-size:12px;font-weight:500;background:var(--glass2);border:1px solid var(--line);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);transition:.2s}
+.tbtn:hover{background:rgba(124,140,255,.35)}
+.tbtn.on{background:linear-gradient(135deg,#5b6cff,#a05bff);border-color:transparent}
+.hint{position:absolute;right:14px;bottom:14px;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;max-width:46%;z-index:4}
+.hint span{padding:5px 10px;border-radius:999px;font-size:11px;color:var(--mut);background:var(--glass2);border:1px solid var(--line)}
+.info{position:absolute;left:14px;bottom:14px;width:min(390px,calc(100% - 28px));padding:16px 18px;border-radius:20px;background:rgba(12,18,44,.82);border:1px solid rgba(255,255,255,.2);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);box-shadow:0 24px 60px rgba(0,0,0,.55);opacity:0;transform:translateY(18px) scale(.96);pointer-events:none;transition:opacity .35s,transform .45s cubic-bezier(.2,.9,.25,1.1);z-index:9}
+.info.show{opacity:1;transform:none;pointer-events:auto}
+.info .x{position:absolute;top:10px;right:10px;width:28px;height:28px;border-radius:50%;border:1px solid var(--line);background:rgba(255,255,255,.08);font-size:12px}
+.info .x:hover{background:rgba(255,255,255,.2)}
+.ihead{display:flex;align-items:center;gap:10px;margin-bottom:8px;padding-right:30px}
+.inum{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:13px;color:#2a1a00;background:var(--warm);flex:none}
+.ihead h4{font-size:15px;font-weight:600}
+.info p{font-size:13px;color:#cfdbf5;margin-bottom:8px}
+.tagrow{display:flex;gap:6px;flex-wrap:wrap}
+.tg{padding:4px 10px;border-radius:999px;font-size:12px;font-weight:600;background:rgba(124,140,255,.22);border:1px solid rgba(124,140,255,.45)}
+.tg.w{background:rgba(255,179,71,.18);border-color:rgba(255,179,71,.5);color:#ffd9a0}
+.tg.c{background:rgba(56,214,255,.16);border-color:rgba(56,214,255,.5);color:#b3f0ff}
+.panel{display:flex;flex-direction:column;gap:12px;overflow-y:auto;min-height:0;padding-right:4px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.25) transparent}
+.tabs{display:flex;gap:6px;padding:5px;border-radius:16px;background:var(--glass);border:1px solid var(--line);position:sticky;top:0;z-index:3;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.tab{flex:1;padding:9px 12px;border-radius:12px;border:0;background:transparent;font-size:13px;font-weight:500;color:var(--mut);transition:.25s}
+.tab.on{color:#fff;background:linear-gradient(135deg,#5b6cff,#a05bff);box-shadow:0 8px 20px rgba(124,140,255,.4)}
+.pane{display:none;flex-direction:column;gap:12px}
+.pane.on{display:flex;animation:rise .45s cubic-bezier(.2,.8,.2,1)}
+@keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.card{padding:16px 18px;border-radius:20px;background:var(--glass);border:1px solid var(--line);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+.card h3{font-size:14px;font-weight:600;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.card h3 i{font-style:normal}
+.intro{font-size:13px;color:var(--mut)}
+.intro b{color:var(--cold);font-weight:600}
+.intro em{color:var(--warm);font-style:normal;font-weight:600}
+.row{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;gap:8px}
+.row label{font-size:13px;font-weight:500}
+.val{padding:3px 12px;border-radius:10px;font-weight:700;font-size:16px;background:rgba(56,214,255,.15);border:1px solid rgba(56,214,255,.4);color:#b3f0ff;transition:.3s;min-width:84px;text-align:center}
+.val.o{font-size:13px;background:rgba(255,179,71,.15);border-color:rgba(255,179,71,.45);color:#ffd9a0}
+.scale{display:flex;justify-content:space-between;font-size:11px;color:var(--mut);margin-top:4px}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:10px;border-radius:6px;outline:none;cursor:pointer;background:linear-gradient(90deg,var(--c,#38d6ff) var(--p,50%),rgba(255,255,255,.16) var(--p,50%))}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:24px;height:24px;border-radius:50%;background:#fff;border:4px solid var(--c,#38d6ff);box-shadow:0 4px 12px rgba(0,0,0,.5);transition:transform .15s}
+input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.18)}
+input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:#fff;border:4px solid var(--c,#38d6ff);box-shadow:0 4px 12px rgba(0,0,0,.5)}
+.presets{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0 16px}
+.pre{padding:9px 6px;border-radius:12px;border:1px solid var(--line);background:rgba(255,255,255,.06);font-size:12px;font-weight:500;transition:.25s}
+.pre:hover{transform:translateY(-2px);background:rgba(124,140,255,.28)}
+.units{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.u{padding:12px 14px;border-radius:16px;border:1px solid var(--line);transition:.3s}
+.u span{display:block;font-size:11px;color:var(--mut)}
+.u b{font-size:19px;font-weight:700;font-variant-numeric:tabular-nums}
+.u.c{background:linear-gradient(135deg,rgba(56,214,255,.18),rgba(56,214,255,.04))}
+.u.f{background:linear-gradient(135deg,rgba(124,140,255,.22),rgba(124,140,255,.04))}
+.u.k{background:linear-gradient(135deg,rgba(192,132,252,.22),rgba(192,132,252,.04))}
+.u.r{background:linear-gradient(135deg,rgba(52,211,153,.2),rgba(52,211,153,.04))}
+.badge{display:inline-flex;align-items:center;gap:8px;padding:6px 14px;border-radius:999px;font-weight:600;font-size:13px;border:1px solid;transition:.4s}
+.badge.solid{background:rgba(56,214,255,.15);border-color:rgba(56,214,255,.55);color:#b3f0ff}
+.badge.liquid{background:rgba(61,184,255,.15);border-color:rgba(61,184,255,.55);color:#bfe6ff}
+.badge.gas{background:rgba(255,93,93,.15);border-color:rgba(255,93,93,.55);color:#ffc2c2}
+.exp{margin:12px 0;padding:12px 14px;border-radius:14px;background:rgba(255,179,71,.1);border:1px solid rgba(255,179,71,.35);font-size:13px;color:#ffe6bf;animation:rise .4s}
+.bar{height:10px;border-radius:6px;background:rgba(255,255,255,.12);overflow:hidden}
+.bar i{display:block;height:100%;width:30%;border-radius:6px;background:linear-gradient(90deg,#38d6ff,#ffb347,#ff5d5d);transition:width .35s}
+.barl{display:flex;justify-content:space-between;font-size:12px;color:var(--mut);margin-bottom:6px}
+.barl b{color:var(--warm)}
+.fm{display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px}
+.fm div{padding:8px 10px;border-radius:12px;background:rgba(255,255,255,.06);border:1px solid var(--line);font-variant-numeric:tabular-nums}
+.fm .w{grid-column:1/-1;color:var(--mut)}
+.q{padding:14px;border-radius:16px;background:rgba(255,255,255,.05);border:1px solid var(--line);transition:.3s}
+.q.ok{background:rgba(52,211,153,.12);border-color:rgba(52,211,153,.6)}
+.q.no{background:rgba(251,113,133,.12);border-color:rgba(251,113,133,.6)}
+.q.na{background:rgba(255,179,71,.1);border-color:rgba(255,179,71,.55)}
+.q p{font-weight:600;font-size:13px;margin-bottom:10px}
+.opt{display:flex;align-items:center;gap:10px;padding:9px 12px;margin-bottom:6px;border-radius:12px;border:1px solid var(--line);background:rgba(255,255,255,.05);font-size:13px;cursor:pointer;transition:.2s}
+.opt:hover{background:rgba(124,140,255,.2)}
+.opt input{accent-color:#7c8cff;width:16px;height:16px}
+.opt.right{background:rgba(52,211,153,.25);border-color:var(--ok)}
+.opt.wrong{background:rgba(251,113,133,.25);border-color:var(--bad)}
+.fb{display:none;margin-top:8px;padding:10px 12px;border-radius:12px;font-size:12px;background:rgba(0,0,0,.25);color:#dfe8fb}
+.fb.show{display:block;animation:rise .4s}
+.qa{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.btn{padding:11px 20px;border-radius:14px;border:0;font-weight:600;font-size:13px;color:#fff;background:linear-gradient(135deg,#10b981,#06b6d4);box-shadow:0 10px 24px rgba(16,185,129,.35);transition:.25s}
+.btn:hover{transform:translateY(-2px)}
+.btn.g{background:rgba(255,255,255,.12);box-shadow:none;border:1px solid var(--line)}
+.score{display:none;padding:8px 16px;border-radius:14px;background:rgba(255,255,255,.1);border:1px solid var(--line);font-weight:700}
+.score.show{display:block;animation:rise .4s}
+.score b{color:var(--ok);font-size:20px}
+.foot{font-size:11px;color:var(--mut);text-align:center;padding:4px 0 8px}
+.loader{position:absolute;inset:0;display:grid;place-items:center;background:#0a1028;z-index:20;transition:opacity .6s;color:var(--mut)}
+.loader.off{opacity:0;pointer-events:none}
+.spin{width:44px;height:44px;border-radius:50%;border:4px solid rgba(255,255,255,.15);border-top-color:var(--acc);animation:sp 1s linear infinite;margin:0 auto 12px}
+@keyframes sp{to{transform:rotate(360deg)}}
+@media(max-width:1100px){main{grid-template-columns:minmax(0,1.3fr) minmax(320px,1fr)}.hint{display:none}}
+@media(max-width:860px){body{overflow:auto}.app{height:auto}main{grid-template-columns:1fr}.stage{height:64vh;min-height:400px}.panel{overflow:visible}.tabs{position:static}}
+</style>
+</head>
+<body>
+<div class="app">
+<header class="top">
+<div class="brand">
+<div class="logo">🌡️</div>
+<div>
+<h1>ห้องทดลอง 3D: อุณหภูมิและการวัดอุณหภูมิ</h1>
+<p>วิทยาศาสตร์ ม.1 • สื่อการเรียนรู้แบบโต้ตอบ</p>
+</div>
+</div>
+<div class="chips">
+<span class="chip">🧪 <b>ห้องทดลองจำลอง 3D</b></span>
+<span class="chip">🖱️ ลากเพื่อหมุน • ซูม • แพน</span>
+</div>
+</header>
+<main>
+<section class="stage" id="stage">
+<div id="view"></div>
+<div id="hsLayer"></div>
+<div class="hud">
+<div class="pill" id="hudState">🌊 ของเหลว <small>น้ำ</small></div>
+<div class="pill">⚡ พลังงานจลน์เฉลี่ย <b id="hudEk" style="color:var(--warm)">0.0</b></div>
+</div>
+<div class="tools">
+<button class="tbtn" id="btnRotate">🔄 หมุนอัตโนมัติ</button>
+<button class="tbtn" id="btnReset">🎯 รีเซ็ตมุมมอง</button>
+<button class="tbtn" id="btnFull">⛶</button>
+</div>
+<div class="hint"><span>🖱️ ลาก = หมุน</span><span>🔍 ล้อเมาส์ = ซูม</span><span>✋ คลิกขวาลาก = แพน</span><span>① คลิกจุดเรืองแสง</span></div>
+<div class="info" id="info">
+<button class="x" id="infoX" aria-label="ปิด">✕</button>
+<div class="ihead"><span class="inum" id="iNum">1</span><h4 id="iTitle"></h4></div>
+<div id="iBody"></div>
+</div>
+<div class="loader" id="loader"><div><div class="spin"></div>กำลังโหลดฉาก 3D…</div></div>
+</section>
+<aside class="panel">
+<div class="tabs">
+<button class="tab on" data-tab="paneLab">🔬 ห้องทดลอง</button>
+<button class="tab" data-tab="paneQuiz">📝 แบบทดสอบ</button>
+</div>
+<div class="pane on" id="paneLab">
+<div class="card">
+<p class="intro">ปรับ <b>อุณหภูมิ</b> และ <em>อัตราการถ่ายโอนพลังงานความร้อน</em> แล้วสังเกตอนุภาคในบีกเกอร์ 3 มิติ การเปลี่ยนสถานะ และค่าอุณหภูมิในสเกลต่าง ๆ แบบเรียลไทม์ คลิกจุดเรืองแสงบนฉากเพื่อเรียนรู้แต่ละส่วน</p>
+</div>
+<div class="card">
+<h3><i>🎚️</i> แผงควบคุมตัวแปร</h3>
+<div class="row"><label for="tempSlider">1. อุณหภูมิ (Temperature)</label><span class="val" id="tempVal">25 °C</span></div>
+<input type="range" id="tempSlider" min="-20" max="100" value="25" step="1">
+<div class="scale"><span>-20°C</span><span>0°C จุดเยือกแข็ง</span><span>100°C จุดเดือด</span></div>
+<div class="presets">
+<button class="pre" data-t="-10">🧊 น้ำแข็ง -10°C</button>
+<button class="pre" data-t="25">🏠 อุณหภูมิห้อง 25°C</button>
+<button class="pre" data-t="100">♨️ จุดเดือด 100°C</button>
+</div>
+<div class="row"><label for="heatSlider">2. อัตราการถ่ายโอนความร้อน (Heat Flux)</label><span class="val o" id="heatVal">ปกติ (1.0x)</span></div>
+<input type="range" id="heatSlider" min="0.2" max="2.5" value="1" step="0.1">
+<div class="scale"><span>ช้า 0.2x</span><span>ปกติ 1.0x</span><span>เร็ว 2.5x</span></div>
+</div>
+<div class="card">
+<h3><i>🌡️</i> ค่าที่วัดได้ในหน่วยต่าง ๆ</h3>
+<div class="units">
+<div class="u c"><span>เซลเซียส (°C)</span><b id="valC">25.0 °C</b></div>
+<div class="u f"><span>ฟาเรนไฮต์ (°F)</span><b id="valF">77.0 °F</b></div>
+<div class="u k"><span>เคลวิน (K)</span><b id="valK">298.15 K</b></div>
+<div class="u r"><span>โรเมอร์ (°R)</span><b id="valR">20.0 °R</b></div>
+</div>
+</div>
+<div class="card">
+<h3><i>⚛️</i> สถานะและการเคลื่อนที่ของอนุภาค</h3>
+<span class="badge liquid" id="badge">🌊 ของเหลว (น้ำ)</span>
+<div class="exp" id="exp"></div>
+<div class="barl"><span>พลังงานจลน์เฉลี่ยของอนุภาค</span><b id="barV">0.0</b></div>
+<div class="bar"><i id="barI"></i></div>
+</div>
+<div class="card">
+<h3><i>🧮</i> สูตรแปลงหน่วยอุณหภูมิ</h3>
+<div class="fm">
+<div>°F = (°C × 9/5) + 32</div>
+<div>K = °C + 273.15</div>
+<div>°R = °C × 4/5</div>
+<div>°C = (°F − 32) × 5/9</div>
+<div class="w">ความสัมพันธ์: C/5 = (F−32)/9 = R/4 = (K−273)/5</div>
+</div>
+</div>
+</div>
+<div class="pane" id="paneQuiz">
+<div class="card">
+<h3><i>📝</i> แบบประเมินความรู้ท้ายกิจกรรม (3 ข้อ)</h3>
+<p class="intro">ทดสอบความเข้าใจเรื่องอุณหภูมิ สเกลวัด และทฤษฎีจลน์ของอนุภาค เลือกคำตอบแล้วกดตรวจเพื่อดูเฉลย</p>
+</div>
+<div id="quizList" style="display:flex;flex-direction:column;gap:12px"></div>
+<div class="qa">
+<button class="btn" id="btnCheck">✅ ตรวจคำตอบและดูเฉลย</button>
+<button class="btn g" id="btnRetry" style="display:none">🔁 ทำอีกครั้ง</button>
+<div class="score" id="score">คะแนน: <b id="scoreV">0</b> / 3</div>
+</div>
+</div>
+<p class="foot">สื่อการเรียนรู้วิทยาศาสตร์ ม.1 — เรื่อง อุณหภูมิและการวัดอุณหภูมิ • Active Learning ด้วยแบบจำลอง 3D</p>
+</aside>
+</main>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(function(){
+const $=function(id){return document.getElementById(id)};
+const lp=function(a,b,t){return a+(b-a)*t};
+const clamp=function(v,a,b){return Math.min(b,Math.max(a,v))};
+let T=25,F=1;
+const R=1.4,H=3.4,BASE=0.36,LIQ=2.2,N=80,TH=3.6,TY0=0.75;
+const THERMO=new THREE.Vector3(3.3,0,0.2);
+
+const stage=$('stage'),view=$('view');
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+renderer.shadowMap.enabled=true;
+renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.outputEncoding=THREE.sRGBEncoding;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure=1.15;
+view.appendChild(renderer.domElement);
+
+const scene=new THREE.Scene();
+scene.fog=new THREE.FogExp2(0x0a1028,0.028);
+const camera=new THREE.PerspectiveCamera(42,1,0.1,120);
+const HOME={pos:new THREE.Vector3(7.4,5.2,9.4),tgt:new THREE.Vector3(1.2,1.9,0)};
+camera.position.copy(HOME.pos);
+const controls=new THREE.OrbitControls(camera,renderer.domElement);
+controls.enableDamping=true;
+controls.dampingFactor=0.07;
+controls.target.copy(HOME.tgt);
+controls.minDistance=4;
+controls.maxDistance=24;
+controls.maxPolarAngle=Math.PI*0.495;
+controls.screenSpacePanning=true;
+controls.autoRotateSpeed=1.4;
+controls.update();
+
+scene.add(new THREE.HemisphereLight(0xaec8ff,0x1a1030,0.75));
+const sun=new THREE.DirectionalLight(0xffffff,1.15);
+sun.position.set(5,10,6);
+sun.castShadow=true;
+sun.shadow.mapSize.set(2048,2048);
+sun.shadow.camera.left=-8;sun.shadow.camera.right=8;sun.shadow.camera.top=8;sun.shadow.camera.bottom=-8;
+sun.shadow.camera.near=1;sun.shadow.camera.far=32;
+sun.shadow.camera.updateProjectionMatrix();
+sun.shadow.bias=-0.0004;
+sun.shadow.radius=3;
+scene.add(sun);
+const rim=new THREE.DirectionalLight(0x8a7bff,0.7);
+rim.position.set(-7,4,-6);
+scene.add(rim);
+const glow=new THREE.PointLight(0xffa24d,0,10,2);
+glow.position.set(0,0.9,0);
+scene.add(glow);
+
+const table=new THREE.Mesh(new THREE.CylinderGeometry(6.4,6.7,0.5,72),new THREE.MeshStandardMaterial({color:0x151c3a,roughness:0.32,metalness:0.55}));
+table.position.y=-0.25;
+table.receiveShadow=true;
+scene.add(table);
+const ring=new THREE.Mesh(new THREE.TorusGeometry(6.4,0.045,12,120),new THREE.MeshBasicMaterial({color:0x5b6cff}));
+ring.rotation.x=Math.PI/2;
+ring.position.y=0.005;
+scene.add(ring);
+for(let i=1;i<=3;i++){
+const r=new THREE.Mesh(new THREE.RingGeometry(i*1.55,i*1.55+0.015,96),new THREE.MeshBasicMaterial({color:0x7c8cff,transparent:true,opacity:0.18,side:THREE.DoubleSide}));
+r.rotation.x=-Math.PI/2;
+r.position.y=0.006;
+scene.add(r);
+}
+
+const starPos=new Float32Array(360*3);
+for(let i=0;i<360;i++){
+const u=Math.random()*Math.PI*2,v=Math.acos(2*Math.random()-1),d=45+Math.random()*10;
+starPos[i*3]=d*Math.sin(v)*Math.cos(u);
+starPos[i*3+1]=Math.abs(d*Math.cos(v))*0.8+2;
+starPos[i*3+2]=d*Math.sin(v)*Math.sin(u);
+}
+const starGeo=new THREE.BufferGeometry();
+starGeo.setAttribute('position',new THREE.BufferAttribute(starPos,3));
+scene.add(new THREE.Points(starGeo,new THREE.PointsMaterial({size:0.18,color:0x9fb0ff,fog:false,transparent:true,opacity:0.8})));
+
+const plate=new THREE.Mesh(new THREE.CylinderGeometry(2.15,2.3,0.3,64),new THREE.MeshStandardMaterial({color:0x232b52,roughness:0.35,metalness:0.8}));
+plate.position.y=0.15;
+plate.castShadow=true;plate.receiveShadow=true;
+scene.add(plate);
+const plateTopMat=new THREE.MeshStandardMaterial({color:0x1d2447,emissive:0x000000,emissiveIntensity:1,roughness:0.4,metalness:0.6});
+const plateTop=new THREE.Mesh(new THREE.CylinderGeometry(1.95,1.95,0.05,64),plateTopMat);
+plateTop.position.y=0.315;
+scene.add(plateTop);
+
+const beaker=new THREE.Group();
+beaker.position.y=BASE;
+scene.add(beaker);
+const glassMat=new THREE.MeshPhysicalMaterial({color:0xdff3ff,transparent:true,opacity:0.16,roughness:0.05,metalness:0,clearcoat:1,clearcoatRoughness:0.05,side:THREE.DoubleSide,depthWrite:false});
+const glassMesh=new THREE.Mesh(new THREE.CylinderGeometry(R+0.05,R,H,56,1,true),glassMat);
+glassMesh.position.y=H/2;
+beaker.add(glassMesh);
+const bottom=new THREE.Mesh(new THREE.CylinderGeometry(R,R,0.08,56),new THREE.MeshPhysicalMaterial({color:0xcfe9ff,transparent:true,opacity:0.35,roughness:0.1,clearcoat:1}));
+bottom.position.y=0.04;
+bottom.receiveShadow=true;
+beaker.add(bottom);
+const rimMesh=new THREE.Mesh(new THREE.TorusGeometry(R+0.05,0.04,12,64),new THREE.MeshPhysicalMaterial({color:0xeaf6ff,transparent:true,opacity:0.6,roughness:0.1}));
+rimMesh.rotation.x=Math.PI/2;
+rimMesh.position.y=H;
+beaker.add(rimMesh);
+for(let i=1;i<=4;i++){
+const gm=new THREE.Mesh(new THREE.TorusGeometry(R+0.01+i*0.0125,0.008,6,64,Math.PI*0.45),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0.55}));
+gm.rotation.x=Math.PI/2;
+gm.rotation.z=Math.PI*0.28;
+gm.position.y=0.5+i*0.6;
+beaker.add(gm);
+}
+
+const waterMat=new THREE.MeshPhysicalMaterial({color:0x2aa8ff,transparent:true,opacity:0.36,roughness:0.08,clearcoat:0.6,depthWrite:false});
+const water=new THREE.Mesh(new THREE.CylinderGeometry(R-0.05,R-0.05,1,56),waterMat);
+beaker.add(water);
+const iceMat=new THREE.MeshPhysicalMaterial({color:0xbdf4ff,transparent:true,opacity:0,roughness:0.15,clearcoat:1,depthWrite:false});
+const ice=new THREE.Mesh(new THREE.BoxGeometry(1.95,1,1.95),iceMat);
+ice.visible=false;
+beaker.add(ice);
+let waterH=LIQ;
+
+const pMat=new THREE.MeshStandardMaterial({color:0x3db8ff,emissive:0x0b3a5a,roughness:0.25,metalness:0.1});
+const pm=new THREE.InstancedMesh(new THREE.SphereGeometry(0.14,20,16),pMat,N);
+pm.castShadow=true;
+pm.frustumCulled=false;
+beaker.add(pm);
+const P=[],V=[],HM=[];
+for(let i=0;i<N;i++){
+const ix=i%4,iz=Math.floor(i/4)%4,iy=Math.floor(i/16);
+HM.push(new THREE.Vector3((ix-1.5)*0.5,0.3+iy*0.42,(iz-1.5)*0.5));
+const a=Math.random()*Math.PI*2,r=Math.sqrt(Math.random())*(R-0.3);
+P.push(new THREE.Vector3(Math.cos(a)*r,0.25+Math.random()*(LIQ-0.5),Math.sin(a)*r));
+V.push(new THREE.Vector3(Math.random()-0.5,Math.random()-0.5,Math.random()-0.5).normalize());
+}
+const dummy=new THREE.Object3D();
+const tmpC=new THREE.Color();
+
+function softTex(){
+const c=document.createElement('canvas');c.width=c.height=64;
+const g=c.getContext('2d');
+const gr=g.createRadialGradient(32,32,0,32,32,32);
+gr.addColorStop(0,'rgba(255,255,255,0.9)');
+gr.addColorStop(1,'rgba(255,255,255,0)');
+g.fillStyle=gr;g.fillRect(0,0,64,64);
+return new THREE.CanvasTexture(c);
+}
+const SN=70;
+const steamPos=new Float32Array(SN*3);
+const steamData=[];
+for(let i=0;i<SN;i++){steamData.push({a:Math.random()*6.28,r:Math.random()*1.0,y:Math.random()*3,s:0.5+Math.random()})}
+const steamGeo=new THREE.BufferGeometry();
+steamGeo.setAttribute('position',new THREE.BufferAttribute(steamPos,3));
+const steamMat=new THREE.PointsMaterial({map:softTex(),size:1.2,transparent:true,opacity:0,depthWrite:false,color:0xdbe7ff});
+const steam=new THREE.Points(steamGeo,steamMat);
+steam.frustumCulled=false;
+scene.add(steam);
+
+function label(txt){
+const c=document.createElement('canvas');c.width=128;c.height=64;
+const g=c.getContext('2d');
+g.font='600 34px Prompt, sans-serif';
+g.fillStyle='#e8eefc';
+g.textAlign='left';
+g.textBaseline='middle';
+g.fillText(txt,6,32);
+const t=new THREE.CanvasTexture(c);
+t.encoding=THREE.sRGBEncoding;
+const s=new THREE.Sprite(new THREE.SpriteMaterial({map:t,transparent:true,depthWrite:false}));
+s.scale.set(0.8,0.4,1);
+return s;
+}
+const thermo=new THREE.Group();
+thermo.position.copy(THERMO);
+scene.add(thermo);
+const tBase=new THREE.Mesh(new THREE.CylinderGeometry(0.5,0.58,0.2,40),new THREE.MeshStandardMaterial({color:0x2a3560,roughness:0.4,metalness:0.7}));
+tBase.position.y=0.1;
+tBase.castShadow=true;tBase.receiveShadow=true;
+thermo.add(tBase);
+const back=new THREE.Mesh(new THREE.BoxGeometry(0.62,TH+0.3,0.05),new THREE.MeshStandardMaterial({color:0xeaf2ff,roughness:0.6,transparent:true,opacity:0.92}));
+back.position.set(0.18,TY0+TH/2-0.05,-0.16);
+back.castShadow=true;
+thermo.add(back);
+const tube=new THREE.Mesh(new THREE.CylinderGeometry(0.11,0.11,TH,32),new THREE.MeshPhysicalMaterial({color:0xdff3ff,transparent:true,opacity:0.3,roughness:0.05,clearcoat:1,depthWrite:false}));
+tube.position.y=TY0+TH/2;
+thermo.add(tube);
+const bulbMat=new THREE.MeshStandardMaterial({color:0xe11d48,emissive:0x5a0a1a,roughness:0.25});
+const bulb=new THREE.Mesh(new THREE.SphereGeometry(0.27,32,24),bulbMat);
+bulb.position.y=0.5;
+bulb.castShadow=true;
+thermo.add(bulb);
+const bulbGlass=new THREE.Mesh(new THREE.SphereGeometry(0.32,32,24),new THREE.MeshPhysicalMaterial({color:0xdff3ff,transparent:true,opacity:0.22,roughness:0.05,clearcoat:1,depthWrite:false}));
+bulbGlass.position.y=0.5;
+thermo.add(bulbGlass);
+const colMat=new THREE.MeshStandardMaterial({color:0xe11d48,emissive:0x5a0a1a,roughness:0.25});
+const col=new THREE.Mesh(new THREE.CylinderGeometry(0.055,0.055,1,20),colMat);
+thermo.add(col);
+for(let t=-20;t<=100;t+=10){
+const major=t%20===0;
+const y=TY0+((t+20)/120)*TH;
+const tk=new THREE.Mesh(new THREE.BoxGeometry(major?0.26:0.14,0.025,0.03),new THREE.MeshBasicMaterial({color:major?0x0f1a44:0x4b5a8a}));
+tk.position.set(0.18,y,-0.13);
+thermo.add(tk);
+if(major){
+const lb=label(String(t));
+lb.position.set(0.74,y,-0.1);
+lb.material.color.set(0xffffff);
+thermo.add(lb);
+}
+}
+const unitLb=label('°C');
+unitLb.position.set(0.55,TY0+TH+0.35,-0.1);
+thermo.add(unitLb);
+
+const HS=[
+{n:1,name:'อนุภาคของสาร',pos:new THREE.Vector3(0,BASE+1.5,0),view:{p:new THREE.Vector3(3.8,3.4,5.4),t:new THREE.Vector3(0,1.9,0)}},
+{n:2,name:'เทอร์โมมิเตอร์',pos:new THREE.Vector3(THERMO.x,TY0+TH+0.05,THERMO.z),view:{p:new THREE.Vector3(8,4.6,5.2),t:new THREE.Vector3(3.3,2.6,0.2)}},
+{n:3,name:'แหล่งความร้อน',pos:new THREE.Vector3(1.9,0.5,1.8),view:{p:new THREE.Vector3(4,1.9,5.6),t:new THREE.Vector3(0,0.6,0)}},
+{n:4,name:'การเปลี่ยนสถานะ',pos:new THREE.Vector3(0,BASE+H+0.7,0),view:{p:new THREE.Vector3(2.6,6.6,5.8),t:new THREE.Vector3(0,3.4,0)}}
+];
+const hsLayer=$('hsLayer');
+HS.forEach(function(h){
+const b=document.createElement('button');
+b.className='hs';
+b.setAttribute('aria-label',h.name);
+b.innerHTML=h.n+'<span class="tag">'+h.name+'</span>';
+b.addEventListener('click',function(e){e.stopPropagation();openCard(h.n)});
+hsLayer.appendChild(b);
+h.el=b;
+});
+
+function K(){return T+273.15}
+function ek(){return (K()/300)*F*10}
+function stateOf(){
+if(T<=0)return{k:'solid',name:'ของแข็ง (น้ำแข็ง)',emo:'🧊',hud:'🧊 ของแข็ง',sub:'น้ำแข็ง',exp:'ที่อุณหภูมิ '+T+'°C (≤ 0°C) น้ำเปลี่ยนสถานะเป็นของแข็ง (น้ำแข็ง) อนุภาคเรียงตัวเป็นระเบียบและสั่นอยู่กับที่ มีแรงยึดเหนี่ยวระหว่างอนุภาคสูง พลังงานจลน์ต่ำสุด',hs:'เรียงตัวชิดกัน สั่นอยู่กับที่'};
+if(T<100)return{k:'liquid',name:'ของเหลว (น้ำ)',emo:'🌊',hud:'🌊 ของเหลว',sub:'น้ำ',exp:'ที่อุณหภูมิ '+T+'°C (0°C - 100°C) น้ำเป็นของเหลว อนุภาคได้รับพลังงานความร้อนเพียงพอที่จะเคลื่อนที่ไหลผ่านกันไปมาได้ แต่ยังไม่หลุดออกจากกัน',hs:'เคลื่อนที่ไหลผ่านกัน'};
+return{k:'gas',name:'แก๊ส (ไอน้ำ)',emo:'♨️',hud:'♨️ แก๊ส',sub:'ไอน้ำ',exp:'ที่อุณหภูมิ '+T+'°C (≥ 100°C) น้ำเดือดและระเหยกลายเป็นไอน้ำ อนุภาคมีพลังงานจลน์สูงมาก เคลื่อนที่อิสระทุกทิศทางด้วยความเร็วสูง',hs:'พุ่งกระจายอิสระ'};
+}
+function cardData(n){
+const s=stateOf(),Fh=(T*9/5+32).toFixed(1),Kv=K().toFixed(2),e=ek().toFixed(1);
+if(n===1)return{t:'อนุภาคและพลังงานจลน์',b:'<p>ทุกสารประกอบด้วยอนุภาคเล็ก ๆ ที่เคลื่อนที่ตลอดเวลา เมื่ออุณหภูมิสูงขึ้น อนุภาคมีพลังงานจลน์มากขึ้นและเคลื่อนที่เร็วขึ้น ตอนนี้อนุภาค<b>'+s.hs+'</b></p><div class="tagrow"><span class="tg">'+s.name+'</span><span class="tg w">Ek ≈ '+e+'</span></div>'};
+if(n===2)return{t:'เทอร์โมมิเตอร์วัดอุณหภูมิ',b:'<p>ของเหลวในหลอดแก้ว (เช่น แอลกอฮอล์สีแดง) ขยายตัวเมื่อร้อนและหดตัวเมื่อเย็น ระดับของเหลวที่เปลี่ยนไปจึงบอกอุณหภูมิได้ อ่านค่าที่ระดับสายตาให้ตรงกับขีดสเกลเพื่อลดความคลาดเคลื่อน</p><div class="tagrow"><span class="tg c">'+T.toFixed(1)+' °C</span><span class="tg">'+Fh+' °F</span><span class="tg w">'+Kv+' K</span></div>'};
+if(n===3)return{t:'แหล่งความร้อนและการถ่ายโอนพลังงาน',b:'<p>ความร้อนถ่ายโอนจากที่มีอุณหภูมิสูงไปยังที่มีอุณหภูมิต่ำกว่า เมื่ออัตราการถ่ายโอนสูง อนุภาคจะได้รับหรือสูญเสียพลังงานเร็วขึ้น ทำให้การเคลื่อนที่เปลี่ยนไวขึ้น (ต่ำกว่า 25°C แผ่นให้ความเย็น สูงกว่า 25°C แผ่นให้ความร้อน)</p><div class="tagrow"><span class="tg w">Heat Flux '+F.toFixed(1)+'x</span><span class="tg '+(T<25?'c':'w')+'">'+(T<25?'โหมดทำความเย็น':T===25?'สมดุลกับห้อง':'โหมดให้ความร้อน')+'</span></div>'};
+return{t:'การเปลี่ยนสถานะของน้ำ',b:'<p>น้ำเปลี่ยนสถานะที่ <b>0°C</b> (หลอมเหลว/แข็งตัว) และ <b>100°C</b> (เดือด/ระเหย) ขณะเปลี่ยนสถานะ พลังงานความร้อนถูกใช้เปลี่ยนการจัดเรียงของอนุภาค สถานะปัจจุบันคือ <b>'+s.name+'</b></p><div class="tagrow"><span class="tg c">0°C = 273.15 K</span><span class="tg w">100°C = 373.15 K</span></div>'};
+}
+let curCard=0,swapT=null;
+function renderCard(n){
+const d=cardData(n);
+$('iNum').textContent=n;
+$('iTitle').textContent=d.t;
+$('iBody').innerHTML=d.b;
+}
+function openCard(n){
+const info=$('info');
+HS.forEach(function(h){h.el.classList.toggle('on',h.n===n)});
+const h=HS[n-1];
+camTween={p:h.view.p.clone(),t:h.view.t.clone()};
+controls.autoRotate=false;
+$('btnRotate').classList.remove('on');
+clearTimeout(swapT);
+if(info.classList.contains('show')&&curCard!==n){
+info.classList.remove('show');
+swapT=setTimeout(function(){curCard=n;renderCard(n);info.classList.add('show')},230);
+}else{
+curCard=n;renderCard(n);info.classList.add('show');
+}
+}
+function closeCard(){
+$('info').classList.remove('show');
+HS.forEach(function(h){h.el.classList.remove('on')});
+curCard=0;
+}
+$('infoX').addEventListener('click',closeCard);
+
+let camTween=null;
+controls.addEventListener('start',function(){camTween=null});
+$('btnReset').addEventListener('click',function(){camTween={p:HOME.pos.clone(),t:HOME.tgt.clone()};closeCard()});
+$('btnRotate').addEventListener('click',function(){
+controls.autoRotate=!controls.autoRotate;
+this.classList.toggle('on',controls.autoRotate);
+camTween=null;
+});
+$('btnFull').addEventListener('click',function(){
+if(!document.fullscreenElement){if(stage.requestFullscreen)stage.requestFullscreen()}
+else{document.exitFullscreen()}
+});
+
+function paint(el,color){
+const p=(el.value-el.min)/(el.max-el.min)*100;
+el.style.setProperty('--p',p+'%');
+el.style.setProperty('--c',color);
+}
+function tempColor(){return T<=0?'#38d6ff':T<100?'#ffb347':'#ff5d5d'}
+function refresh(){
+const C=T,Fh=C*9/5+32,Kv=C+273.15,Rv=C*4/5,s=stateOf(),e=ek();
+$('tempVal').textContent=C+' °C';
+$('heatVal').textContent=(F===1?'ปกติ (1.0x)':F.toFixed(1)+'x');
+$('valC').textContent=C.toFixed(1)+' °C';
+$('valF').textContent=Fh.toFixed(1)+' °F';
+$('valK').textContent=Kv.toFixed(2)+' K';
+$('valR').textContent=Rv.toFixed(1)+' °R';
+const b=$('badge');
+b.className='badge '+s.k;
+b.textContent=s.emo+' '+s.name;
+$('exp').textContent=s.exp;
+$('hudState').innerHTML=s.hud+' <small>'+s.sub+'</small>';
+$('hudState').style.borderColor=T<=0?'rgba(56,214,255,.7)':T<100?'rgba(61,184,255,.4)':'rgba(255,93,93,.75)';
+$('hudEk').textContent=e.toFixed(1);
+$('barV').textContent=e.toFixed(1);
+$('barI').style.width=clamp(e/32*100,4,100)+'%';
+paint($('tempSlider'),tempColor());
+paint($('heatSlider'),'#ffb347');
+if(curCard)renderCard(curCard);
+}
+$('tempSlider').addEventListener('input',function(e){T=parseFloat(e.target.value);refresh()});
+$('heatSlider').addEventListener('input',function(e){F=parseFloat(e.target.value);refresh()});
+document.querySelectorAll('.pre').forEach(function(b){
+b.addEventListener('click',function(){
+T=parseFloat(b.dataset.t);
+$('tempSlider').value=T;
+refresh();
+});
+});
+document.querySelectorAll('.tab').forEach(function(b){
+b.addEventListener('click',function(){
+document.querySelectorAll('.tab').forEach(function(x){x.classList.toggle('on',x===b)});
+document.querySelectorAll('.pane').forEach(function(p){p.classList.toggle('on',p.id===b.dataset.tab)});
+});
+});
+
+const QZ=[
+{q:'ข้อที่ 1) เมื่อเพิ่มอุณหภูมิให้กับสาร ผลที่เกิดขึ้นกับอนุภาคภายในสารตามทฤษฎีจลน์คือข้อใด?',o:['ก. อนุภาคหยุดการเคลื่อนที่ทั้งหมด','ข. อนุภาคเคลื่อนที่ช้าลงและอยู่ชิดกันมากขึ้น','ค. อนุภาคมีพลังงานจลน์เพิ่มขึ้นและเคลื่อนที่เร็วขึ้น','ง. ขนาดของอนุภาคแต่ละตัวจะขยายใหญ่ขึ้น'],a:2,e:'เฉลย ค. ถูกต้อง! ตามทฤษฎีจลน์ของสาร เมื่อได้รับความร้อน อุณหภูมิจะสูงขึ้น ส่งผลให้อนุภาคมีพลังงานจลน์ (Kinetic Energy) เพิ่มขึ้น จึงเคลื่อนที่เร็วขึ้น'},
+{q:'ข้อที่ 2) หากวัดอุณหภูมิของน้ำได้ 50 องศาเซลเซียส (°C) จะเท่ากับกี่องศาฟาเรนไฮต์ (°F)?',o:['ก. 90 °F','ข. 122 °F','ค. 100 °F','ง. 323 °F'],a:1,e:'เฉลย ข. ถูกต้อง! คำนวณจากสูตร °F = (°C × 9/5) + 32 → (50 × 9/5) + 32 = 90 + 32 = 122 °F'},
+{q:'ข้อที่ 3) หน่วยวัดอุณหภูมิในระบบเอสไอ (SI Unit) ที่เป็นอุณหภูมิสัมบูรณ์คือหน่วยใด?',o:['ก. เซลเซียส (°C)','ข. ฟาเรนไฮต์ (°F)','ค. เคลวิน (K)','ง. โรเมอร์ (°R)'],a:2,e:'เฉลย ค. ถูกต้อง! เคลวิน (Kelvin, K) เป็นหน่วยมาตรฐานสากล (SI Unit) สำหรับวัดอุณหภูมิทางวิทยาศาสตร์ โดยเริ่มจากศูนย์สัมบูรณ์ (Absolute Zero)'}
+];
+$('quizList').innerHTML=QZ.map(function(q,i){
+return '<div class="q" id="q'+i+'"><p>'+q.q+'</p>'+q.o.map(function(o,j){
+return '<label class="opt"><input type="radio" name="q'+i+'" value="'+j+'"><span>'+o+'</span></label>';
+}).join('')+'<div class="fb" id="fb'+i+'"></div></div>';
+}).join('');
+$('btnCheck').addEventListener('click',function(){
+let score=0;
+QZ.forEach(function(q,i){
+const sel=document.querySelector('input[name="q'+i+'"]:checked');
+const box=$('q'+i),fb=$('fb'+i);
+const opts=box.querySelectorAll('.opt');
+opts.forEach(function(o,j){
+o.classList.remove('right','wrong');
+if(j===q.a)o.classList.add('right');
+else if(sel&&parseInt(sel.value,10)===j)o.classList.add('wrong');
+});
+fb.classList.add('show');
+if(!sel){box.className='q na';fb.textContent='⚠️ ยังไม่ได้เลือกคำตอบ! '+q.e}
+else if(parseInt(sel.value,10)===q.a){score++;box.className='q ok';fb.textContent='✅ '+q.e}
+else{box.className='q no';fb.textContent='❌ ตอบผิด! '+q.e}
+});
+$('scoreV').textContent=score;
+$('score').classList.add('show');
+$('btnCheck').style.display='none';
+$('btnRetry').style.display='inline-block';
+});
+$('btnRetry').addEventListener('click',function(){
+QZ.forEach(function(q,i){
+document.getElementsByName('q'+i).forEach(function(r){r.checked=false});
+$('q'+i).className='q';
+$('q'+i).querySelectorAll('.opt').forEach(function(o){o.classList.remove('right','wrong')});
+$('fb'+i).classList.remove('show');
+});
+$('score').classList.remove('show');
+$('btnCheck').style.display='inline-block';
+$('btnRetry').style.display='none';
+});
+
+function resize(){
+const w=stage.clientWidth,h=stage.clientHeight;
+if(!w||!h)return;
+renderer.setSize(w,h,false);
+camera.aspect=w/h;
+camera.fov=camera.aspect<1?62:camera.aspect<1.3?52:42;
+camera.updateProjectionMatrix();
+}
+if(window.ResizeObserver){new ResizeObserver(resize).observe(stage)}
+window.addEventListener('resize',resize);
+document.addEventListener('fullscreenchange',resize);
+resize();
+
+function stepParticles(dt){
+const mode=T<=0?0:T<100?1:2;
+const sp=Math.max(0.15,(T+30)/25)*F;
+const tgt=sp*(mode===1?0.55:0.9);
+const top=mode===2?H-0.2:LIQ-0.1;
+const rr=R-0.05-0.14;
+const amp=Math.max(0.15,(T+20)/20)*0.035*F;
+const k=Math.min(1,5*dt);
+for(let i=0;i<N;i++){
+const p=P[i],v=V[i],h=HM[i];
+if(mode===0){
+v.set(0,0,0);
+p.x+=(h.x-p.x)*k+(Math.random()-0.5)*amp;
+p.y+=(h.y-p.y)*k+(Math.random()-0.5)*amp;
+p.z+=(h.z-p.z)*k+(Math.random()-0.5)*amp;
+continue;
+}
+if(mode===1)v.y-=2.4*dt;
+let len=v.length();
+if(len<0.001){v.set(Math.random()-0.5,Math.random()-0.5,Math.random()-0.5).normalize();len=1}
+v.x+=(Math.random()-0.5)*0.6;
+v.y+=(Math.random()-0.5)*0.6;
+v.z+=(Math.random()-0.5)*0.6;
+len=v.length();
+v.multiplyScalar(lp(len,tgt,Math.min(1,3*dt))/len);
+p.addScaledVector(v,dt);
+const d=Math.hypot(p.x,p.z);
+if(d>rr){
+const nx=p.x/d,nz=p.z/d;
+p.x=nx*rr;p.z=nz*rr;
+const dot=v.x*nx+v.z*nz;
+if(dot>0){v.x-=2*dot*nx;v.z-=2*dot*nz}
+}
+if(p.y<0.25){p.y=0.25;v.y=Math.abs(v.y)}
+if(p.y>top){p.y=top;v.y=-Math.abs(v.y)}
+}
+for(let i=0;i<N;i++){
+dummy.position.copy(P[i]);
+dummy.updateMatrix();
+pm.setMatrixAt(i,dummy.matrix);
+}
+pm.instanceMatrix.needsUpdate=true;
+}
+
+let heatLv=0;
+const clock=new THREE.Clock();
+const proj=new THREE.Vector3();
+let timeAcc=0;
+function frame(){
+requestAnimationFrame(frame);
+const dt=Math.min(clock.getDelta(),0.033);
+timeAcc+=dt;
+const kk=1-Math.exp(-6*dt);
+const mode=T<=0?0:T<100?1:2;
+
+stepParticles(dt);
+
+tmpC.set(mode===0?0x7ef0ff:mode===1?0x3db8ff:0xff6b5a);
+pMat.color.lerp(tmpC,kk);
+pMat.emissive.copy(pMat.color).multiplyScalar(0.3+clamp((T+20)/120,0,1)*0.3);
+
+const wTarget=mode===2?0.5:LIQ;
+waterH=lp(waterH,wTarget,kk);
+water.scale.y=waterH;
+water.position.y=0.08+waterH/2;
+waterMat.opacity=lp(waterMat.opacity,mode===0?0:mode===1?0.36:0.2,kk);
+water.visible=waterMat.opacity>0.01;
+tmpC.setHex(0x2aa8ff).lerp(new THREE.Color(0xff8a4c),clamp(T/100,0,1));
+waterMat.color.lerp(tmpC,kk);
+iceMat.opacity=lp(iceMat.opacity,mode===0?0.42:0,kk);
+ice.visible=iceMat.opacity>0.01;
+ice.scale.y=2.15;
+ice.position.y=0.08+1.075;
+
+const tl=clamp((T+20)/120,0.02,1);
+const colH=Math.max(0.05,tl*TH-0.05);
+col.scale.y=lp(col.scale.y,colH,kk);
+col.position.y=TY0-0.05+col.scale.y/2;
+const hue=mode===0?0x0ea5e9:0xe11d48;
+tmpC.setHex(hue);
+colMat.color.lerp(tmpC,kk);bulbMat.color.copy(colMat.color);
+colMat.emissive.copy(colMat.color).multiplyScalar(0.3);bulbMat.emissive.copy(colMat.emissive);
+
+const hv=T<25?-(25-T)/45:(T-25)/75;
+heatLv=lp(heatLv,hv,kk);
+const mag=Math.abs(heatLv)*(0.5+0.5*F);
+plateTopMat.emissive.setHex(heatLv<0?0x38d6ff:0xff6a1f);
+plateTopMat.emissiveIntensity=mag*1.6;
+glow.color.setHex(heatLv<0?0x38d6ff:0xffa24d);
+glow.intensity=mag*2.2;
+
+const so=mode===2?0.5:T>80?clamp((T-80)/40,0,0.2):0;
+steamMat.opacity=lp(steamMat.opacity,so,kk);
+steam.visible=steamMat.opacity>0.01;
+if(steam.visible){
+const rate=0.6+F*0.5;
+for(let i=0;i<SN;i++){
+const s=steamData[i];
+s.y+=s.s*dt*rate;
+if(s.y>3.2){s.y=0;s.a=Math.random()*6.28;s.r=Math.random()*0.9}
+const spread=1+s.y*0.25;
+steamPos[i*3]=Math.cos(s.a+timeAcc*0.3)*s.r*spread;
+steamPos[i*3+1]=BASE+H+s.y;
+steamPos[i*3+2]=Math.sin(s.a+timeAcc*0.3)*s.r*spread;
+}
+steamGeo.attributes.position.needsUpdate=true;
+}
+
+if(camTween){
+camera.position.lerp(camTween.p,kk*0.6);
+controls.target.lerp(camTween.t,kk*0.6);
+if(camera.position.distanceTo(camTween.p)<0.05&&controls.target.distanceTo(camTween.t)<0.05)camTween=null;
+}
+controls.update();
+
+const w=stage.clientWidth,h=stage.clientHeight;
+for(let i=0;i<HS.length;i++){
+proj.copy(HS[i].pos).project(camera);
+const vis=proj.z<1&&Math.abs(proj.x)<1.1&&Math.abs(proj.y)<1.1;
+HS[i].el.style.opacity=vis?1:0;
+HS[i].el.style.pointerEvents=vis?'auto':'none';
+const x=(proj.x*0.5+0.5)*w-17,y=(-proj.y*0.5+0.5)*h-17;
+HS[i].el.style.transform='translate('+x.toFixed(1)+'px,'+y.toFixed(1)+'px)';
+}
+renderer.render(scene,camera);
+}
+refresh();
+frame();
+setTimeout(function(){$('loader').classList.add('off')},400);
+})();
+</script>
+</body>
+</html>
